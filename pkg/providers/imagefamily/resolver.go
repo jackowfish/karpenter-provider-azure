@@ -19,6 +19,7 @@ package imagefamily
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -195,6 +196,12 @@ func (r *defaultResolver) getStorageProfile(ctx context.Context, instanceType *c
 }
 
 func mapToImageDistro(imageID string, imageFamily ImageFamily) (string, error) {
+	// Handle custom GPU images - assume they're based on Ubuntu 22.04 Gen2 
+	if strings.Contains(imageID, "/subscriptions/") && !strings.Contains(imageID, "/CommunityGalleries/") {
+		// This is a custom Shared Image Gallery image, assume Ubuntu-based for GPU images
+		return "aks-ubuntu-containerd-22.04-gen2", nil
+	}
+	
 	var imageInfo types.DefaultImageOutput
 	imageInfo.PopulateImageTraitsFromID(imageID)
 	for _, defaultImage := range imageFamily.DefaultImages() {
