@@ -197,7 +197,7 @@ func (r *defaultResolver) getStorageProfile(ctx context.Context, instanceType *c
 
 func mapToImageDistro(imageID string, imageFamily ImageFamily) (string, error) {
 	// Handle custom Community Gallery GPU images
-	if (strings.Contains(imageID, "Thunder")) && strings.Contains(imageID, "kubernetes_gpu_cuda") {
+	if (strings.Contains(strings.ToLower(imageID), "thunder")) && strings.Contains(imageID, "kubernetes_gpu_cuda") {
 		// This is your custom GPU Community Gallery image, assume Ubuntu-based
 		return "aks-ubuntu-containerd-22.04-gen2", nil
 	}
