@@ -28,6 +28,7 @@ import (
 	"github.com/mitchellh/hashstructure/v2"
 	"github.com/patrickmn/go-cache"
 	"github.com/samber/lo"
+	core "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/karpenter/pkg/scheduling"
 	"sigs.k8s.io/karpenter/pkg/utils/pretty"
@@ -79,6 +80,36 @@ func (p *provider) List(ctx context.Context, nodeClass *v1beta1.AKSNodeClass) ([
 		return []NodeImage{}, err
 	}
 
+	// Check if a custom GPU image is specified
+	if nodeClass.Spec.GPUImageID != nil && *nodeClass.Spec.GPUImageID != "" {
+		// Return both the custom GPU image and regular images
+		nodeImages := p.getCustomGPUImage(nodeClass, kubernetesVersion)
+		regularImages, err := p.getRegularImages(ctx, nodeClass, kubernetesVersion)
+		if err != nil {
+			return []NodeImage{}, err
+		}
+		return append(nodeImages, regularImages...), nil
+	}
+
+	return p.getRegularImages(ctx, nodeClass, kubernetesVersion)
+}
+
+func (p *provider) getCustomGPUImage(nodeClass *v1beta1.AKSNodeClass, kubernetesVersion string) []NodeImage {
+	// Create a GPU-specific image entry with GPU requirements
+	// This image should only be used for instances that have GPUs
+	gpuRequirements := scheduling.NewRequirements(
+		scheduling.NewRequirement(v1beta1.LabelSKUGPUCount, core.NodeSelectorOpExists),
+	)
+	
+	return []NodeImage{
+		{
+			ID:           *nodeClass.Spec.GPUImageID,
+			Requirements: gpuRequirements,
+		},
+	}
+}
+
+func (p *provider) getRegularImages(ctx context.Context, nodeClass *v1beta1.AKSNodeClass, kubernetesVersion string) ([]NodeImage, error) {
 	supportedImages := getSupportedImages(nodeClass.Spec.ImageFamily, kubernetesVersion)
 	// TODO: refactor to be part of construction, since this is a karpenter setting and won't change across the process.
 	useSIG := options.FromContext(ctx).UseSIG
