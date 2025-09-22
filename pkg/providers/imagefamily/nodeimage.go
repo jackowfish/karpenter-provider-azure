@@ -75,6 +75,15 @@ func NewProvider(versionsClient types.CommunityGalleryImageVersionsAPI, location
 
 // Returns the list of available NodeImages for the given AKSNodeClass sorted in priority ordering
 func (p *provider) List(ctx context.Context, nodeClass *v1beta1.AKSNodeClass) ([]NodeImage, error) {
+	// TODO: refactor to be part of construction, since this is a karpenter setting and won't change across the process.
+	useSIG := options.FromContext(ctx).UseSIG
+
+	// CIG has no FIPS images; FIPS images can only be accessed through SIG
+	// (this won't be an error since there just aren't any FIPS images for CIG)
+	if lo.FromPtr(nodeClass.Spec.FIPSMode) == v1beta1.FIPSModeFIPS && !useSIG {
+		return []NodeImage{}, nil
+	}
+
 	kubernetesVersion, err := nodeClass.GetKubernetesVersion()
 	if err != nil {
 		return []NodeImage{}, err
@@ -100,7 +109,7 @@ func (p *provider) getCustomGPUImage(nodeClass *v1beta1.AKSNodeClass, kubernetes
 	gpuRequirements := scheduling.NewRequirements(
 		scheduling.NewRequirement(v1beta1.LabelSKUGPUCount, core.NodeSelectorOpExists),
 	)
-	
+
 	return []NodeImage{
 		{
 			ID:           *nodeClass.Spec.GPUImageID,
@@ -110,7 +119,7 @@ func (p *provider) getCustomGPUImage(nodeClass *v1beta1.AKSNodeClass, kubernetes
 }
 
 func (p *provider) getRegularImages(ctx context.Context, nodeClass *v1beta1.AKSNodeClass, kubernetesVersion string) ([]NodeImage, error) {
-	supportedImages := getSupportedImages(nodeClass.Spec.ImageFamily, kubernetesVersion)
+	supportedImages := getSupportedImages(nodeClass.Spec.ImageFamily, nodeClass.Spec.FIPSMode, kubernetesVersion, useSIG)
 	// TODO: refactor to be part of construction, since this is a karpenter setting and won't change across the process.
 	useSIG := options.FromContext(ctx).UseSIG
 
@@ -163,7 +172,7 @@ func (p *provider) listSIG(ctx context.Context, supportedImages []types.DefaultI
 			// Unable to find given image version
 			continue
 		}
-		imageID := fmt.Sprintf(sharedImageGalleryImageIDFormat, options.FromContext(ctx).SIGSubscriptionID, supportedImage.GalleryResourceGroup, supportedImage.GalleryName, supportedImage.ImageDefinition, nextImage.Version)
+		imageID := BuildImageIDSIG(options.FromContext(ctx).SIGSubscriptionID, supportedImage.GalleryResourceGroup, supportedImage.GalleryName, supportedImage.ImageDefinition, nextImage.Version)
 
 		nodeImages = append(nodeImages, NodeImage{
 			ID:           imageID,
@@ -207,7 +216,7 @@ func (p *provider) getCIGImageID(publicGalleryURL, communityImageName string) (s
 	if err != nil {
 		return "", err
 	}
-	return buildImageIDCIG(publicGalleryURL, communityImageName, imageVersion), nil
+	return BuildImageIDCIG(publicGalleryURL, communityImageName, imageVersion), nil
 }
 
 func (p *provider) latestNodeImageVersionCommunity(publicGalleryURL, communityImageName string) (string, error) {
@@ -227,6 +236,12 @@ func (p *provider) latestNodeImageVersionCommunity(publicGalleryURL, communityIm
 	return lo.FromPtr(topImageVersionCandidate.Name), nil
 }
 
-func buildImageIDCIG(publicGalleryURL, communityImageName, imageVersion string) string {
+// BuildImageIDCIG builds a Community Image Gallery image ID
+func BuildImageIDCIG(publicGalleryURL, communityImageName, imageVersion string) string {
 	return fmt.Sprintf(communityImageIDFormat, publicGalleryURL, communityImageName, imageVersion)
+}
+
+// BuildImageIDSIG builds a Shared Image Gallery image ID
+func BuildImageIDSIG(subscriptionID, resourceGroup, galleryName, imageDefinition, imageVersion string) string {
+	return fmt.Sprintf(sharedImageGalleryImageIDFormat, subscriptionID, resourceGroup, galleryName, imageDefinition, imageVersion)
 }
