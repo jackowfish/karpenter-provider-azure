@@ -303,7 +303,8 @@ func (a AKS) applyOptions(nbv *NodeBootstrapVariables) {
 
 	if a.GPUNode {
 		nbv.GPUNode = true
-		nbv.ConfigGPUDriverIfNeeded = true
+		// Don't install GPU drivers if using a custom GPU image (drivers pre-installed)
+		nbv.ConfigGPUDriverIfNeeded = !a.IsCustomGPUImage
 		nbv.GPUDriverVersion = a.GPUDriverVersion
 		nbv.GPUDriverType = a.GPUDriverType
 		nbv.GPUImageSHA = a.GPUImageSHA
