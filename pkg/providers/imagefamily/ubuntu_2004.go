@@ -97,6 +97,7 @@ func (u Ubuntu2004) ScriptlessCustomData(
 			Labels:           labels,
 			CABundle:         caBundle,
 			GPUNode:          u.Options.GPUNode,
+			IsCustomGPUImage: u.Options.IsCustomGPUImage,
 			GPUDriverVersion: u.Options.GPUDriverVersion,
 			GPUDriverType:    u.Options.GPUDriverType,
 			GPUImageSHA:      u.Options.GPUImageSHA,

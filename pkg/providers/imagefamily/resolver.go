@@ -19,6 +19,7 @@ package imagefamily
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -154,6 +155,12 @@ func (r *defaultResolver) Resolve(
 		return nil, err
 	}
 
+	// Check if we're using a custom GPU image - if so, don't install GPU drivers
+	// as they should be pre-installed in the custom image
+	if nodeClass.Spec.GPUImageID != nil && *nodeClass.Spec.GPUImageID != "" && imageID == *nodeClass.Spec.GPUImageID {
+		staticParameters.IsCustomGPUImage = true
+	}
+
 	template := &template.Parameters{
 		StaticParameters: staticParameters,
 		ScriptlessCustomData: imageFamily.ScriptlessCustomData(
@@ -203,6 +210,12 @@ func (r *defaultResolver) getStorageProfile(ctx context.Context, instanceType *c
 }
 
 func mapToImageDistro(imageID string, fipsMode *v1beta1.FIPSMode, imageFamily ImageFamily, useSIG bool) (string, error) {
+	// Handle custom Community Gallery GPU images
+	if strings.Contains(strings.ToLower(imageID), "thunder") && strings.Contains(imageID, "kubernetes_gpu_cuda") {
+		// This is your custom GPU Community Gallery image, assume Ubuntu-based
+		return "aks-ubuntu-containerd-22.04-gen2", nil
+	}
+
 	var imageInfo types.DefaultImageOutput
 	imageInfo.PopulateImageTraitsFromID(imageID)
 	for _, defaultImage := range imageFamily.DefaultImages(useSIG, fipsMode) {
