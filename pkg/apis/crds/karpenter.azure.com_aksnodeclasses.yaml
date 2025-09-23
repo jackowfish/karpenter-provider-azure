@@ -394,6 +394,12 @@ spec:
                 - FIPS
                 - Disabled
                 type: string
+              gpuImageID:
+                description: |-
+                  GPUImageID is the ID of the custom image to use for GPU instances.
+                  When specified, GPU nodes will use this image instead of the default bootstrapped images.
+                  This allows using pre-built images with GPU drivers already installed.
+                type: string
               imageFamily:
                 default: Ubuntu
                 description: ImageFamily is the image family that instances use.
