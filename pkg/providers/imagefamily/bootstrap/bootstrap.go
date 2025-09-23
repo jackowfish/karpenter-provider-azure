@@ -51,6 +51,7 @@ type Options struct {
 	Labels           map[string]string `hash:"set"`
 	CABundle         *string
 	GPUNode          bool
+	IsCustomGPUImage bool
 	GPUDriverVersion string
 	GPUDriverType    string
 	GPUImageSHA      string

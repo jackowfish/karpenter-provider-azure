@@ -48,6 +48,11 @@ type AKSNodeClassSpec struct {
 	// ImageID is the ID of the image that instances use.
 	// Not exposed in the API yet
 	ImageID *string `json:"-"`
+	// GPUImageID is the ID of the custom image to use for GPU instances.
+	// When specified, GPU nodes will use this image instead of the default bootstrapped images.
+	// This allows using pre-built images with GPU drivers already installed.
+	// +optional
+	GPUImageID *string `json:"gpuImageID,omitempty"`
 	// ImageFamily is the image family that instances use.
 	// +kubebuilder:default=Ubuntu
 	// +kubebuilder:validation:Enum:={Ubuntu,Ubuntu2204,Ubuntu2404,AzureLinux}

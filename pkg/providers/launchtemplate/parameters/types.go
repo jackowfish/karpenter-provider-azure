@@ -29,6 +29,7 @@ type StaticParameters struct {
 	CABundle                       *string
 	Arch                           string
 	GPUNode                        bool
+	IsCustomGPUImage               bool
 	GPUDriverVersion               string
 	GPUDriverType                  string
 	GPUImageSHA                    string
